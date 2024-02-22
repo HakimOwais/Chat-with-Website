@@ -51,17 +51,30 @@ def get_conversational_rag_chain(retriever_chain):
     
     return create_retrieval_chain(retriever_chain, stuff_documents_chain)
 
-def get_response(user_input):
-    #create conversation chain
-    retriever_chain = get_context_retriever_from_url(st.session_state.vector_store)
+# def get_response(user_input):
+#     #create conversation chain
+#     retriever_chain = get_context_retriever_from_url(st.session_state.vector_store)
+#     conversation_rag_chain = get_conversational_rag_chain(retriever_chain)
+    
+#     response = conversation_rag_chain.invoke({
+#             "chat_history": st.session_state.chat_history,
+#             "input": user_query
+#         })
+#     return response["answer"]
+
+
+def get_response(user_query, vector_store, chat_history):
+    # Create conversation chain
+    retriever_chain = get_context_retriever_from_url(vector_store)
+
     conversation_rag_chain = get_conversational_rag_chain(retriever_chain)
-    
+
     response = conversation_rag_chain.invoke({
-            "chat_history": st.session_state.chat_history,
-            "input": user_query
-        })
+        "chat_history": chat_history,
+        "input": user_query
+    })
+
     return response["answer"]
-    
      
 #app config
 st.set_page_config(page_title="Chat with your Website", 
@@ -81,76 +94,30 @@ with st.sidebar:
 if website_url is None or website_url =="":
     st.info("Please enter the website URL")
 
-# else:  
-#     if "chat_history" not in st.session_state:
-#         st.session_state.chat_history =[
-#             AIMessage(content="Hello, I am a bot. How can I help you?"),
-#         ]
-        
-#     if "vector_store" not in st.session_state:
-#         st.session_state.vector_store = get_vectorstore_from_url(website_url)
-    
-#     #User input 
-#     user_query = st.chat_input("Type you message here...")
-#     if user_query is not None and user_query !="":
-#         response = get_response(user_query)
-#         st.session_state.chat_history.append(HumanMessage(content=user_query))
-#         st.session_state.chat_history.append(AIMessage(content=response))
-              
-#     # chat conversation
-#     for message in st.session_state.chat_history:
-#         if isinstance(message,AIMessage):
-#             with st.chat_message("AI Chatbot"):
-#                 st.write(message.content)
-            
-#         elif isinstance(message,HumanMessage):
-#             with st.chat_message("Human"):
-#                 st.write(message.content)
 
-else:  
-    if "chat_history" not in st.session_state:
-        st.session_state.chat_history = []
-    if "vector_store" not in st.session_state:
-        st.session_state.vector_store = get_vectorstore_from_url(website_url)
-    
-    # User input 
-    user_query = st.text_input("Type your message here...")
+else:
+    st.info(f"Chatting with {website_url}")
+    if "website_data" not in st.session_state or st.session_state.website_data.get("url") != website_url:
+        st.session_state.website_data = {
+            "url": website_url,
+            "vector_store": get_vectorstore_from_url(website_url),
+            "chat_history": [AIMessage(content="Hello, I am a bot, How can I help?")]
+        }
+        
+    # User Input
+    user_query= st.chat_input("Type your message")
+
     if user_query is not None and user_query !="":
-        response = get_response(user_query)
-        st.session_state.chat_history.append({"User": user_query, "Bot": response})
+        response = get_response(user_query, st.session_state.website_data["vector_store"], st.session_state.website_data["chat_history"])
         
-    # Chat conversation
-    for message in st.session_state.chat_history:
-        if "Bot" in message:
-            with st.container():
-                st.text_area("Bot:", value=message["Bot"], height=100, max_chars=None, key=None)
-        if "User" in message:
-            with st.container():
-                st.text_area("User:", value=message["User"], height=100, max_chars=None, key=None)
-
-# else:
-#     st.info(f"Chatting with {website_url}")
-#     if "website_data" not in st.session_state or st.session_state.website_data.get("url") != website_url:
-#         st.session_state.website_data = {
-#             "url": website_url,
-#             "vector_store": get_vectorstore_from_url(website_url),
-#             "chat_history": [AIMessage(content="Hello, I am a bot, How can I help?")]
-#         }
+        st.session_state.website_data["chat_history"].append(HumanMessage(content=user_query))
+        st.session_state.website_data["chat_history"].append(AIMessage(content=response))
         
-#     # User Input
-#     user_query= st.chat_input("Type your message")
-
-#     if user_query is not None and user_query !="":
-#         response = get_response(user_query, st.session_state.website_data["vector_store"], st.session_state.website_data["chat_history"])
-        
-#         st.session_state.website_data["chat_history"].append(HumanMessage(content=user_query))
-#         st.session_state.website_data["chat_history"].append(AIMessage(content=response))
-        
-#     # conversation
-#     for message in st.session_state.website_data["chat_history"]:
-#         if isinstance(message, AIMessage):
-#             with st.chat_message("AI"):
-#                 st.write(message.content)
-#         elif isinstance(message, HumanMessage):
-#             with st.chat_message("Human"):
-#                 st.write(message.content)    
+    # conversation
+    for message in st.session_state.website_data["chat_history"]:
+        if isinstance(message, AIMessage):
+            with st.chat_message("AI"):
+                st.write(message.content)
+        elif isinstance(message, HumanMessage):
+            with st.chat_message("Human"):
+                st.write(message.content)    
