@@ -2,3 +2,7 @@ langchain-openai==0.0.2.post1
 streamlit==1.28.0
 langchain==0.1.1
 beautifulsoup4==4.12.2
+python-dotenv
+
+
+-e . 
